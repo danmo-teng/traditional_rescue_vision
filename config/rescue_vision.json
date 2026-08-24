@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "roi_polygon": [[0, 80], [639, 80], [639, 479], [0, 479]],
+  "calibration_ground_points_mm": [[-300, 400], [0, 400], [300, 400], [-300, 800], [0, 800], [300, 800], [-300, 1200], [0, 1200], [300, 1200]],
+  "runtime": {
+    "material_classes": ["green_supply", "danger_cyan", "injured_orange", "core_black"],
+    "danger_classes": ["danger_cyan"],
+    "zone_classes": ["safe_red", "safe_blue", "entrance_purple"],
+    "danger_fps": 120,
+    "material_fps": 60,
+    "zone_fps": 20
+  },
+  "classes": {
+    "green_supply": {
+      "display_name": "普通物资（绿色方块）",
+      "enabled": true,
+      "kind": "material",
+      "display_bgr": [0, 255, 0],
+      "hsv": [35, 65, 25, 90, 255, 255],
+      "lab": [0, 0, 95, 255, 135, 255],
+      "fusion": "and",
+      "morphology": {"open": 3, "close": 5, "iterations": 1},
+      "candidate": {
+        "area_px": [80, 25000], "aspect": [1.0, 2.2],
+        "extent_min": 0.35, "extent_target": 0.75,
+        "solidity_min": 0.60, "solidity_target": 0.90,
+        "color_fill_min": 0.25, "color_fill_target": 0.65,
+        "border_margin": 2, "size_mm": [[25, 60], [25, 60]]
+      },
+      "weights": {"color": 0.55, "shape": 0.25, "size": 0.20},
+      "score_min": 0.65,
+      "confirmation": {"min_hits": 3, "max_misses": 5, "match_distance": 90, "position_alpha": 0.55}
+    },
+    "danger_cyan": {
+      "display_name": "危险目标（浅蓝方块）",
+      "enabled": true,
+      "kind": "material",
+      "display_bgr": [255, 255, 0],
+      "hsv": [78, 45, 45, 105, 255, 255],
+      "lab": [0, 55, 75, 255, 115, 150],
+      "fusion": "or",
+      "morphology": {"open": 3, "close": 5, "iterations": 1},
+      "candidate": {
+        "area_px": [60, 28000], "aspect": [1.0, 2.4],
+        "extent_min": 0.28, "extent_target": 0.72,
+        "solidity_min": 0.52, "solidity_target": 0.88,
+        "color_fill_min": 0.18, "color_fill_target": 0.55,
+        "border_margin": 1, "size_mm": [[20, 70], [20, 70]]
+      },
+      "weights": {"color": 0.62, "shape": 0.20, "size": 0.18},
+      "score_min": 0.52,
+      "confirmation": {"min_hits": 2, "max_misses": 7, "match_distance": 110, "position_alpha": 0.6}
+    },
+    "injured_orange": {
+      "display_name": "伤员（橙色长方体）",
+      "enabled": true,
+      "kind": "material",
+      "display_bgr": [0, 140, 255],
+      "hsv": [4, 70, 35, 28, 255, 255],
+      "lab": [0, 130, 135, 255, 210, 255],
+      "fusion": "and",
+      "morphology": {"open": 3, "close": 7, "iterations": 1},
+      "candidate": {
+        "area_px": [150, 45000], "aspect": [1.25, 3.5],
+        "extent_min": 0.40, "extent_target": 0.78,
+        "solidity_min": 0.65, "solidity_target": 0.92,
+        "color_fill_min": 0.30, "color_fill_target": 0.70,
+        "border_margin": 2, "size_mm": [[25, 60], [60, 105]]
+      },
+      "weights": {"color": 0.48, "shape": 0.30, "size": 0.22},
+      "score_min": 0.67,
+      "confirmation": {"min_hits": 3, "max_misses": 5, "match_distance": 110, "position_alpha": 0.55}
+    },
+    "core_black": {
+      "display_name": "核心物资（黑色三棱锥）",
+      "enabled": true,
+      "kind": "core_black",
+      "display_bgr": [80, 80, 80],
+      "hsv": [0, 0, 0, 179, 255, 78],
+      "lab": [0, 0, 0, 100, 255, 255],
+      "fusion": "and",
+      "morphology": {"open": 3, "close": 5, "iterations": 1},
+      "polygon_epsilon": 0.04,
+      "candidate": {
+        "area_px": [60, 22000], "aspect": [1.0, 2.8],
+        "extent_min": 0.24, "extent_target": 0.62,
+        "solidity_min": 0.48, "solidity_target": 0.82,
+        "color_fill_min": 0.18, "color_fill_target": 0.52,
+        "contrast_min": 10, "contrast_max": 120, "vertices": [3, 8],
+        "border_margin": 3, "size_mm": [[20, 70], [20, 70]]
+      },
+      "weights": {"color": 0.42, "shape": 0.38, "size": 0.20},
+      "score_min": 0.68,
+      "confirmation": {"min_hits": 5, "max_misses": 4, "match_distance": 85, "position_alpha": 0.5}
+    },
+    "safe_red": {
+      "display_name": "红方安全区",
+      "enabled": true,
+      "kind": "zone",
+      "display_bgr": [0, 0, 255],
+      "hsv": [170, 75, 40, 12, 255, 255],
+      "lab": [0, 145, 110, 255, 255, 255],
+      "fusion": "hsv",
+      "morphology": {"open": 5, "close": 15, "iterations": 1},
+      "candidate": {
+        "area_px": [3000, 250000], "aspect": [1.0, 6.0],
+        "extent_min": 0.30, "extent_target": 0.75,
+        "solidity_min": 0.55, "solidity_target": 0.90,
+        "color_fill_min": 0.25, "color_fill_target": 0.70,
+        "border_margin": 0, "size_mm": [[120, 1000], [120, 1200]]
+      },
+      "weights": {"color": 0.55, "shape": 0.25, "size": 0.20},
+      "score_min": 0.62,
+      "confirmation": {"min_hits": 3, "max_misses": 10, "match_distance": 250, "position_alpha": 0.4}
+    },
+    "safe_blue": {
+      "display_name": "蓝方安全区",
+      "enabled": true,
+      "kind": "zone",
+      "display_bgr": [255, 80, 0],
+      "hsv": [98, 65, 35, 132, 255, 255],
+      "lab": [0, 80, 0, 255, 150, 135],
+      "fusion": "hsv",
+      "morphology": {"open": 5, "close": 15, "iterations": 1},
+      "candidate": {
+        "area_px": [3000, 250000], "aspect": [1.0, 6.0],
+        "extent_min": 0.30, "extent_target": 0.75,
+        "solidity_min": 0.55, "solidity_target": 0.90,
+        "color_fill_min": 0.25, "color_fill_target": 0.70,
+        "border_margin": 0, "size_mm": [[120, 1000], [120, 1200]]
+      },
+      "weights": {"color": 0.55, "shape": 0.25, "size": 0.20},
+      "score_min": 0.62,
+      "confirmation": {"min_hits": 3, "max_misses": 10, "match_distance": 250, "position_alpha": 0.4}
+    },
+    "entrance_purple": {
+      "display_name": "安全区紫色入口",
+      "enabled": true,
+      "kind": "zone",
+      "display_bgr": [255, 0, 255],
+      "hsv": [132, 50, 25, 169, 255, 255],
+      "lab": [0, 130, 0, 255, 255, 155],
+      "fusion": "and",
+      "morphology": {"open": 3, "close": 11, "iterations": 1},
+      "candidate": {
+        "area_px": [600, 180000], "aspect": [1.2, 12.0],
+        "extent_min": 0.20, "extent_target": 0.62,
+        "solidity_min": 0.45, "solidity_target": 0.82,
+        "color_fill_min": 0.18, "color_fill_target": 0.58,
+        "border_margin": 0, "size_mm": [[20, 800], [100, 1200]]
+      },
+      "weights": {"color": 0.56, "shape": 0.29, "size": 0.15},
+      "score_min": 0.60,
+      "confirmation": {"min_hits": 3, "max_misses": 10, "match_distance": 250, "position_alpha": 0.4}
+    }
+  }
+}
