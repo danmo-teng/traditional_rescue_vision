@@ -16,6 +16,7 @@ def auto_sample_profile(
     frame: np.ndarray,
     rectangle: tuple[int, int, int, int],
     profile: dict[str, Any],
+    reference_resolution: tuple[int, int] | list[int] | None = None,
 ) -> dict[str, Any]:
     """Estimate color and shape ranges from a user-drawn target rectangle."""
     x0, y0, x1, y1 = rectangle
@@ -65,6 +66,11 @@ def auto_sample_profile(
     estimated: dict[str, float] = {}
     if contour is not None and cv2.contourArea(contour) >= 20:
         area = float(cv2.contourArea(contour))
+        if reference_resolution is None:
+            reference_resolution = (frame.shape[1], frame.shape[0])
+        reference_width, reference_height = reference_resolution
+        area_scale = (frame.shape[1] * frame.shape[0]) / max(reference_width * reference_height, 1)
+        reference_area = area / max(area_scale, 1e-6)
         rect = cv2.minAreaRect(contour)
         rw, rh = rect[1]
         aspect = max(rw, rh) / max(min(rw, rh), 1.0)
@@ -73,13 +79,21 @@ def auto_sample_profile(
         solidity = area / hull_area
         perimeter = cv2.arcLength(contour, True)
         vertices = len(cv2.approxPolyDP(contour, 0.04 * perimeter, True))
-        rules["area_px"] = [max(10, int(area * 0.35)), int(area * 2.8)]
+        rules["area_px"] = [max(10, int(reference_area * 0.35)), int(reference_area * 2.8)]
         rules["aspect"] = [max(1.0, aspect * 0.55), max(1.3, aspect * 1.8)]
         rules["extent_min"] = max(0.1, extent * 0.55)
         rules["solidity_min"] = max(0.2, solidity * 0.65)
         if kind == "core_black":
             rules["vertices"] = [max(3, vertices - 2), min(12, vertices + 3)]
-        estimated = {"area_px": area, "aspect": aspect, "extent": extent, "solidity": solidity, "vertices": vertices}
+        estimated = {
+            "area_px": reference_area,
+            "area_px_actual": area,
+            "area_px_reference": reference_area,
+            "aspect": aspect,
+            "extent": extent,
+            "solidity": solidity,
+            "vertices": vertices,
+        }
 
     return {
         "rectangle": [x0, y0, x1, y1],
@@ -90,7 +104,11 @@ def auto_sample_profile(
     }
 
 
-def diagnose_frame(frame: np.ndarray, exposure: int | None = None) -> dict[str, Any]:
+def diagnose_frame(
+    frame: np.ndarray,
+    exposure: int | None = None,
+    max_exposure: int = 20,
+) -> dict[str, Any]:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     small = cv2.resize(gray, (320, 240), interpolation=cv2.INTER_AREA)
     mean = float(small.mean())
@@ -107,12 +125,12 @@ def diagnose_frame(frame: np.ndarray, exposure: int | None = None) -> dict[str, 
     suggested = exposure
     if exposure is not None and median_value > 1:
         # Aim for a well-separated color signal without driving highlights
-        # into clipping. At 350 FPS keep a hard safety ceiling of 20 (2 ms).
-        suggested = int(np.clip(round(exposure * 165.0 / median_value), 4, 20))
+        # into clipping. The caller derives the ceiling from frame interval.
+        suggested = int(np.clip(round(exposure * 165.0 / median_value), 4, max_exposure))
     if mean < 55 or p95 < 120:
         advice.append("画面偏暗：先增强无频闪直流补光，再小幅增加曝光或增益。")
         if exposure is not None:
-            suggested = min(20, max(exposure + 1, suggested))
+            suggested = min(max_exposure, max(exposure + 1, suggested))
     elif mean > 195 or bright > 0.06:
         advice.append("画面偏亮/局部过曝：降低曝光或补光亮度。")
         if exposure is not None:

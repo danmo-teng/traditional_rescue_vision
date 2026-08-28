@@ -11,6 +11,11 @@ class MultiFrameTracker:
         self.config = config
         self.tracks: list[Track] = []
         self.next_id = 1
+        reference_width, reference_height = config.get("threshold_reference_resolution", [640, 480])
+        camera = config.get("camera", {})
+        width = int(camera.get("width", reference_width))
+        height = int(camera.get("height", reference_height))
+        self.pixel_scale = math.sqrt((width * height) / max(reference_width * reference_height, 1))
 
     @staticmethod
     def _position(detection: Detection) -> tuple[float, float]:
@@ -26,6 +31,8 @@ class MultiFrameTracker:
         for track_index, track in enumerate(self.tracks):
             settings = self._settings(track.class_name)
             gate = float(settings.get("match_distance", 100.0))
+            if track.last_detection.ground_xy_mm is None:
+                gate *= self.pixel_scale
             for detection_index, detection in enumerate(detections):
                 if detection.class_name != track.class_name:
                     continue

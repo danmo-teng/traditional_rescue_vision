@@ -25,6 +25,20 @@ def save_config(path: str | Path, config: dict[str, Any]) -> None:
 
 
 def validate_config(config: dict[str, Any]) -> None:
+    camera = config.get("camera", {})
+    for key, fallback in (("width", 1280), ("height", 720), ("fps", 180)):
+        if int(camera.get(key, fallback)) <= 0:
+            raise ValueError(f"camera.{key}必须大于0")
+    runtime = config.get("runtime", {})
+    rate_limits = {
+        "danger_fps": (60, 120),
+        "material_fps": (60, 90),
+        "zone_fps": (20, 30),
+    }
+    for key, (low, high) in rate_limits.items():
+        value = float(runtime.get(key, high))
+        if not low <= value <= high:
+            raise ValueError(f"runtime.{key}必须在{low}..{high}之间")
     if not isinstance(config.get("classes"), dict) or not config["classes"]:
         raise ValueError("配置必须包含非空classes对象")
     for name, profile in config["classes"].items():

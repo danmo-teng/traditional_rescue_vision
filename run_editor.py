@@ -21,10 +21,10 @@ def arguments() -> argparse.Namespace:
     root = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description="RDK X5救援目标传统视觉阈值编辑器")
     parser.add_argument("--device", default="/dev/video0")
-    parser.add_argument("--width", type=int, default=640)
-    parser.add_argument("--height", type=int, default=480)
-    parser.add_argument("--camera-fps", type=int, default=350)
-    parser.add_argument("--vision-fps", type=float, default=120.0)
+    parser.add_argument("--width", type=int)
+    parser.add_argument("--height", type=int)
+    parser.add_argument("--camera-fps", type=int)
+    parser.add_argument("--vision-fps", type=float, default=90.0)
     parser.add_argument("--gui-fps", type=float, default=25.0)
     parser.add_argument("--config", default=str(root / "config" / "rescue_vision.json"))
     parser.add_argument("--homography", default=str(root / "config" / "homography.txt"))
@@ -35,7 +35,12 @@ def arguments() -> argparse.Namespace:
 def main() -> int:
     args = arguments()
     config = load_config(args.config)
-    localizer = GroundLocalizer.load(args.homography)
+    camera_config = config.setdefault("camera", {})
+    args.width = int(args.width or camera_config.get("width", 1280))
+    args.height = int(args.height or camera_config.get("height", 720))
+    args.camera_fps = int(args.camera_fps or camera_config.get("fps", 180))
+    camera_config.update({"width": args.width, "height": args.height, "fps": args.camera_fps})
+    localizer = GroundLocalizer.load(args.homography, (args.width, args.height))
     detector = TraditionalDetector(config, localizer)
     tracker = MultiFrameTracker(config)
     camera = LatestFrameCamera(args.device, args.width, args.height, args.camera_fps)
@@ -91,7 +96,9 @@ def main() -> int:
                     # The editor tunes one class at a time. Limiting detection
                     # to that class preserves 120 Hz while all mask stages and
                     # rejected-candidate reasons remain visible.
-                    detections, debug = detector.detect(selected_frame, [editor.selected_class])
+                    detections, debug = detector.detect(
+                        selected_frame, [editor.selected_class], collect_debug=True
+                    )
                     tracks = tracker.update(detections)
                     metrics["vision_ms"] = (time.perf_counter() - started) * 1000.0
                     metrics["frame_age_ms"] = (time.monotonic_ns() - packet.published_ns) / 1_000_000.0

@@ -1,14 +1,26 @@
 {
   "schema_version": 1,
-  "roi_polygon": [[0, 80], [639, 80], [639, 479], [0, 479]],
+  "threshold_reference_resolution": [640, 480],
+  "camera": {
+    "width": 1280,
+    "height": 720,
+    "fps": 180
+  },
+  "roi_polygon": [[0, 120], [1279, 120], [1279, 719], [0, 719]],
   "calibration_ground_points_mm": [[-300, 400], [0, 400], [300, 400], [-300, 800], [0, 800], [300, 800], [-300, 1200], [0, 1200], [300, 1200]],
   "runtime": {
     "material_classes": ["green_supply", "danger_cyan", "injured_orange", "core_black"],
     "danger_classes": ["danger_cyan"],
     "zone_classes": ["safe_red", "safe_blue", "entrance_purple"],
     "danger_fps": 120,
-    "material_fps": 60,
-    "zone_fps": 20
+    "material_fps": 90,
+    "zone_fps": 30
+  },
+  "performance": {
+    "two_stage": true,
+    "coarse_width": 640,
+    "coarse_height": 360,
+    "refine_padding_px": 12
   },
   "classes": {
     "green_supply": {

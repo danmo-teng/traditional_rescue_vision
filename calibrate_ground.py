@@ -17,11 +17,17 @@ def main() -> int:
     root = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description="点击地面标定点，计算图像到车体地面坐标的单应矩阵")
     parser.add_argument("--device", default="/dev/video0")
-    parser.add_argument("--camera-fps", type=int, default=350)
+    parser.add_argument("--width", type=int)
+    parser.add_argument("--height", type=int)
+    parser.add_argument("--camera-fps", type=int)
     parser.add_argument("--config", default=str(root / "config" / "rescue_vision.json"))
     parser.add_argument("--output", default=str(root / "config" / "homography.txt"))
     args = parser.parse_args()
     config = load_config(args.config)
+    camera_config = config.get("camera", {})
+    width = int(args.width or camera_config.get("width", 1280))
+    height = int(args.height or camera_config.get("height", 720))
+    camera_fps = int(args.camera_fps or camera_config.get("fps", 180))
     ground_points = [tuple(point) for point in config["calibration_ground_points_mm"]]
     clicked: list[tuple[float, float]] = []
     frozen = None
@@ -34,7 +40,7 @@ def main() -> int:
             print(f"点{len(clicked)} image=({x},{y}) ground={ground_points[len(clicked)-1]}mm")
 
     cv2.setMouseCallback(window, mouse)
-    camera = LatestFrameCamera(args.device, 640, 480, args.camera_fps)
+    camera = LatestFrameCamera(args.device, width, height, camera_fps)
     camera.start()
     print("按空格冻结画面；按给定地面坐标顺序点击；R重置；S计算并保存；Q退出")
     print("地面点顺序：", ground_points)
@@ -67,7 +73,7 @@ def main() -> int:
                     print("点数不足，不能保存")
                     continue
                 localizer, rmse = GroundLocalizer.calibrate(clicked, ground_points)
-                localizer.save(args.output)
+                localizer.save(args.output, (width, height))
                 print(f"标定已保存：{args.output}，重投影RMSE={rmse:.2f}mm")
     finally:
         camera.stop()

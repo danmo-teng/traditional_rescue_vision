@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
+import json
 
 import cv2
 import numpy as np
@@ -57,14 +58,35 @@ class GroundLocalizer:
         rmse = float(np.sqrt(np.mean(np.sum((projected - ground) ** 2, axis=1))))
         return GroundLocalizer(matrix), rmse
 
-    def save(self, path: str | Path) -> None:
+    def save(self, path: str | Path, resolution: tuple[int, int] | None = None) -> None:
         if not self.calibrated:
             raise ValueError("尚未完成地面标定")
-        np.savetxt(str(path), self.matrix, fmt="%.12g")
+        target = Path(path)
+        np.savetxt(str(target), self.matrix, fmt="%.12g")
+        if resolution is not None:
+            metadata = target.with_suffix(target.suffix + ".meta.json")
+            metadata.write_text(
+                json.dumps({"width": int(resolution[0]), "height": int(resolution[1])}, indent=2),
+                encoding="utf-8",
+            )
 
     @staticmethod
-    def load(path: str | Path) -> "GroundLocalizer":
+    def load(
+        path: str | Path,
+        expected_resolution: tuple[int, int] | None = None,
+    ) -> "GroundLocalizer":
         target = Path(path)
         if not target.exists():
             return GroundLocalizer()
+        if expected_resolution is not None:
+            metadata = target.with_suffix(target.suffix + ".meta.json")
+            if not metadata.exists():
+                return GroundLocalizer()
+            try:
+                info = json.loads(metadata.read_text(encoding="utf-8"))
+                stored = (int(info["width"]), int(info["height"]))
+            except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+                return GroundLocalizer()
+            if stored != tuple(map(int, expected_resolution)):
+                return GroundLocalizer()
         return GroundLocalizer(np.loadtxt(str(target), dtype=np.float64))

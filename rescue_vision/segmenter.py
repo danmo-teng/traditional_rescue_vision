@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import math
 
 import cv2
 import numpy as np
@@ -55,12 +56,20 @@ class Segmenter:
         profile: dict[str, Any],
         hsv: np.ndarray | None = None,
         lab: np.ndarray | None = None,
+        *,
+        apply_roi: bool = True,
+        scale_resolution: tuple[int, int] | None = None,
+        collect_stages: bool = True,
     ) -> tuple[np.ndarray, dict[str, np.ndarray]]:
-        if hsv is None or lab is None:
-            hsv, lab = self.color_spaces(frame)
-        hsv_mask = self._range(hsv, profile["hsv"], hue=True)
-        lab_mask = self._range(lab, profile["lab"])
         fusion = profile.get("fusion", "and")
+        need_hsv = fusion != "lab"
+        need_lab = fusion != "hsv"
+        if need_hsv and hsv is None:
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        if need_lab and lab is None:
+            lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        hsv_mask = self._range(hsv, profile["hsv"], hue=True) if need_hsv else None
+        lab_mask = self._range(lab, profile["lab"]) if need_lab else None
         if fusion == "or":
             mask = cv2.bitwise_or(hsv_mask, lab_mask)
         elif fusion == "hsv":
@@ -71,14 +80,28 @@ class Segmenter:
             mask = cv2.bitwise_and(hsv_mask, lab_mask)
 
         roi = self.config.get("roi_polygon", [])
-        if len(roi) >= 3:
+        if apply_roi and len(roi) >= 3:
+            camera = self.config.get("camera", {})
+            source_width = max(1, int(camera.get("width", frame.shape[1])))
+            source_height = max(1, int(camera.get("height", frame.shape[0])))
+            sx = frame.shape[1] / source_width
+            sy = frame.shape[0] / source_height
+            scaled_roi = np.asarray(
+                [[round(point[0] * sx), round(point[1] * sy)] for point in roi],
+                dtype=np.int32,
+            )
             roi_mask = np.zeros(mask.shape, dtype=np.uint8)
-            cv2.fillPoly(roi_mask, [np.asarray(roi, dtype=np.int32)], 255)
+            cv2.fillPoly(roi_mask, [scaled_roi], 255)
             mask = cv2.bitwise_and(mask, roi_mask)
 
         morph = profile.get("morphology", {})
-        open_size = odd_kernel(morph.get("open", 0))
-        close_size = odd_kernel(morph.get("close", 0))
+        reference_width, reference_height = self.config.get(
+            "threshold_reference_resolution", [frame.shape[1], frame.shape[0]]
+        )
+        scale_width, scale_height = scale_resolution or (frame.shape[1], frame.shape[0])
+        linear_scale = math.sqrt((scale_width * scale_height) / max(reference_width * reference_height, 1))
+        open_size = odd_kernel(round(float(morph.get("open", 0)) * linear_scale))
+        close_size = odd_kernel(round(float(morph.get("close", 0)) * linear_scale))
         iterations = max(1, int(morph.get("iterations", 1)))
         if open_size:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (open_size, open_size))
@@ -86,4 +109,11 @@ class Segmenter:
         if close_size:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_size, close_size))
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=iterations)
-        return mask, {"hsv": hsv_mask, "lab": lab_mask, "final": mask}
+        if not collect_stages:
+            return mask, {}
+        stages = {"final": mask}
+        if hsv_mask is not None:
+            stages["hsv"] = hsv_mask
+        if lab_mask is not None:
+            stages["lab"] = lab_mask
+        return mask, stages

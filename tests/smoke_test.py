@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import copy
+import tempfile
 import sys
 from pathlib import Path
 
@@ -36,11 +37,20 @@ def main() -> None:
 
     noisy = green.copy()
     cv2.rectangle(noisy, (30, 30), (34, 34), (0, 255, 0), -1)
-    noisy_detections, noisy_debug = detector.detect(noisy, ["green_supply"])
+    noisy_detections, noisy_debug = detector.detect(noisy, ["green_supply"], collect_debug=True)
     assert len(noisy_detections) == 1
     valid_mask = noisy_debug["valid_masks"]["green_supply"]
     assert valid_mask[32, 32] == 0, "面积不合格的小色块不应出现在最终白色掩膜"
     assert valid_mask[280, 280] == 255
+
+    # Production runs at 1280x720 while thresholds remain expressed in the
+    # original 640x480 reference resolution. Geometry scaling must preserve
+    # the detection and still reject the correspondingly scaled noise blob.
+    green_hd = cv2.resize(noisy, (1280, 720), interpolation=cv2.INTER_NEAREST)
+    hd_detections, hd_debug = detector.detect(green_hd, ["green_supply"], collect_debug=True)
+    assert len(hd_detections) == 1, "1280x720下旧的基准面积阈值应自动换算"
+    assert hd_debug["valid_masks"]["green_supply"][48, 64] == 0
+    assert hd_debug["valid_masks"]["green_supply"][420, 560] == 255
 
     # One logical class may contain multiple angle/lighting references. A
     # reference has its own color and geometry rules but keeps the class name.
@@ -92,6 +102,11 @@ def main() -> None:
     assert rmse < 0.01
     ground = localizer.image_to_ground((300, 250))
     assert ground is not None and abs(ground[0]) < 0.01 and abs(ground[1] - 800) < 0.01
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "homography.txt"
+        localizer.save(path, (1280, 720))
+        assert GroundLocalizer.load(path, (1280, 720)).calibrated
+        assert not GroundLocalizer.load(path, (640, 480)).calibrated
 
     tracker = MultiFrameTracker(config)
     tracks = []

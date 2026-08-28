@@ -34,6 +34,8 @@ class Candidate:
     reject_reason: str = ""
     ground_xy_mm: Optional[tuple[float, float]] = None
     size_mm: Optional[tuple[float, float]] = None
+    reference_index: int = 0
+    reference_name: str = "base"
 
 
 @dataclass

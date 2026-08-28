@@ -4,7 +4,7 @@ set -euo pipefail
 device="${1:-/dev/video0}"
 exposure="${EXPOSURE:-10}"
 white_balance="${WHITE_BALANCE:-4500}"
-focus="${FOCUS:-215}"
+focus="${FOCUS:-264}"
 
 v4l2-ctl -d "$device" --set-ctrl=auto_exposure=1
 v4l2-ctl -d "$device" --set-ctrl=exposure_time_absolute="$exposure"
